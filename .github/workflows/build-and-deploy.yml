@@ -4,9 +4,9 @@ name: Build and Deploy
 on:
   push:
     branches: [main]
-    # Only trigger on changes to source files
     paths:
       - "src/**"
+      - "packages/**"
       - "package.json"
       - "tsconfig.json"
       - ".github/workflows/**"
@@ -24,11 +24,31 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
         run: npm install
 
-      - name: Build
+      - name: Install Turbo globally
+        run: npm install -g turbo
+
+      - name: Disable Turborepo telemetry
+        run: npx turbo telemetry disable
+
+      - name: Build packages
         run: npm run build
+
+      - name: Copy built files to dist
+        run: |
+          mkdir -p dist
+          # Copy the main better-auth package dist
+          cp -r packages/better-auth/dist/* dist/ 2>/dev/null || true
+          # Copy package.json and other necessary files
+          cp packages/better-auth/package.json dist/
+          cp packages/better-auth/README.md dist/ 2>/dev/null || true
+          # List what we're deploying for debugging
+          ls -la dist/
 
       - name: Deploy to dist branch
         uses: peaceiris/actions-gh-pages@v3
